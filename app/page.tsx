@@ -95,15 +95,12 @@ export default function PlantAnalyzer() {
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Immediately pull out a snapshot string to create a visual freeze frame
       const frameSnapshotUrl = canvas.toDataURL('image/jpeg');
       setPreviewImage(frameSnapshotUrl);
       
-      // Pause the live stream element so the user sees exactly what frame was gathered
       video.pause();
       setCameraPaused(true);
 
-      // Extract uncompressed byte array for processing
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
       workerRef.current.postMessage({
@@ -126,10 +123,9 @@ export default function PlantAnalyzer() {
       reader.onload = (e) => {
         const fileDataUrl = e.target?.result as string;
         
-        // Render a visible preview image instead of the video stream instantly
         setPreviewImage(fileDataUrl);
         setCameraPaused(false);
-        setStreamActive(false); // Stop showing camera options if a file is uploaded
+        setStreamActive(false); 
         
         const img = new Image();
         img.onload = () => {
@@ -138,7 +134,8 @@ export default function PlantAnalyzer() {
           if (canvas && ctx) {
             canvas.width = img.width;
             canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
+            // Explicitly map the drawn image to the newly scaled canvas dimensions
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
@@ -172,7 +169,6 @@ export default function PlantAnalyzer() {
           <div className="relative w-full aspect-[4/3] bg-stone-100 rounded-2xl overflow-hidden border border-stone-200/60 shadow-sm flex items-center justify-center">
             
             {previewImage ? (
-              // Visible visual container for file uploads and camera freezes
               <img src={previewImage} alt="Analysis Target Specimen" className="w-full h-full object-cover" />
             ) : (
               <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />

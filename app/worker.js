@@ -14,40 +14,35 @@ self.addEventListener("message", async (event) => {
   if (action === "analyze") {
     try {
       if (!processor || !model) {
-        self.postMessage({ status: "loading", message: "Loading engine..." });
+        self.postMessage({ status: "loading", message: "Loading offline vision engine (WASM)..." });
         
-        // Load the model and processor from your local directory
         processor = await AutoProcessor.from_pretrained("plant_analyzer_model");
-        model = await AutoModelForImageClassification.from_pretrained("plant_analyzer_model", {
-          device: "webgpu"
-        });
+        
+        // FIX 1: Removed `device: "webgpu"`. 
+        // WebGPU silent failures cause flat 0% outputs on unsupported hardware. 
+        // This forces the stable WASM backend.
+        model = await AutoModelForImageClassification.from_pretrained("plant_analyzer_model");
       }
 
-      self.postMessage({ status: "processing", message: "Normalizing image data..." });
+      self.postMessage({ status: "processing", message: "Normalizing cellular data..." });
 
-      // FIX: Ensure the image is converted to a clean RGB format before passing to the processor
-      // This step converts the RGBA canvas data to RGB, which vision models expect.
-      const rawImage = new RawImage(rgbaData, width, height, 4).rgb();
+      // FIX 2: Explicitly cast the Clamped array from the canvas into a standard Uint8Array
+      // Without this, the ONNX tensor might refuse to map the memory buffer, seeing only zeros.
+      const pixelData = new Uint8Array(rgbaData.buffer || rgbaData);
+      const rawImage = new RawImage(pixelData, width, height, 4).rgb();
       
-      // The processor handles resizing, cropping, and mean/std normalization (Crucial for accuracy)
       const inputs = await processor(rawImage);
 
       self.postMessage({ status: "processing", message: "Running inference..." });
 
-      // Run inference
       const { logits } = await model(inputs);
-
-      // DEBUG: Log raw logits to console so you can see if the model is actually outputting numbers
-      // If these are all ~0, the model is not seeing a recognizable image.
-      console.log("Raw Logits from Model:", logits.data);
       
-      // Apply Softmax to convert raw logits to probabilities
+      // Calculate softmax probabilities
       const maxLogit = Math.max(...logits.data);
       const scores = logits.data.map(l => Math.exp(l - maxLogit));
       const sumScores = scores.reduce((a, b) => a + b, 0);
       const probabilities = scores.map(s => s / sumScores);
 
-      // Decode labels
       const id2label = model.config.id2label;
       const sortedResults = Object.keys(id2label)
         .map(id => ({
@@ -56,8 +51,7 @@ self.addEventListener("message", async (event) => {
         }))
         .sort((a, b) => b.score - a.score);
 
-      // Return the top 3 matches without filtering out "low confidence" 
-      // so you can see if the model is at least picking the right category (even at 5-10%)
+      // Return the top 3 matches directly
       const finalResults = sortedResults.slice(0, 3);
 
       self.postMessage({ status: "success", results: finalResults });
