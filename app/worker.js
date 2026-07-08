@@ -6,7 +6,6 @@ env.localModelPath = "/models/";
 
 let classifier = null;
 
-// HARDCODED MAPPING: This ensures the UI will definitely show your names
 const LABEL_MAP = {
   0: "Powdery Mildew",
   1: "Healthy",
@@ -21,19 +20,21 @@ self.addEventListener("message", async (event) => {
   if (action === "analyze") {
     try {
       if (!classifier) {
-        self.postMessage({ status: "loading", message: "Initializing pipeline..." });
         classifier = await pipeline("image-classification", "plant_analyzer_model", { quantized: false });
       }
 
       const pixelData = new Uint8Array(rgbaData.buffer || rgbaData);
       const rawImage = new RawImage(pixelData, width, height, 4).rgb();
-      
       const results = await classifier(rawImage, { topk: 5 });
 
-      // MANUALLY MAP THE LABELS:
-      // Even if the pipeline doesn't find the label, we look it up using the index
+      // DEBUG: Log the raw results to the console so we can see what's inside
+      console.log("WORKER: Raw pipeline results:", results);
+
       const sanitizedResults = results.map((r, index) => {
-        // Use the pipeline's label if it exists (r.label), otherwise use our map
+        // Logic: 
+        // 1. If r.label exists, use it.
+        // 2. If not, try to look up via LABEL_MAP[index]
+        // 3. Fallback to "Node ID: [index]"
         const label = r.label || LABEL_MAP[index] || `Node ID: ${index}`;
         
         return {
