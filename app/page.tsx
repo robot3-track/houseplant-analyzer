@@ -78,6 +78,21 @@ export default function PlantAnalyzer() {
     }
   };
 
+  // Helper function to extract a fast, low-memory 224x224 buffer for the AI
+  const extractAnalysisBuffer = (source: HTMLVideoElement | HTMLImageElement) => {
+    const analysisCanvas = document.createElement('canvas');
+    const ANALYSIS_SIZE = 224; // Standard size for vision models
+    analysisCanvas.width = ANALYSIS_SIZE;
+    analysisCanvas.height = ANALYSIS_SIZE;
+    
+    const analysisCtx = analysisCanvas.getContext('2d');
+    if (!analysisCtx) return null;
+    
+    // Draw and squish the image into the 224x224 box
+    analysisCtx.drawImage(source, 0, 0, ANALYSIS_SIZE, ANALYSIS_SIZE);
+    return analysisCtx.getImageData(0, 0, ANALYSIS_SIZE, ANALYSIS_SIZE);
+  };
+
   const captureAndAnalyze = () => {
     if (!videoRef.current || !canvasRef.current || !workerRef.current) return;
 
@@ -91,21 +106,26 @@ export default function PlantAnalyzer() {
         return;
       }
 
+      // 1. Draw full resolution for the UI preview
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
       const frameSnapshotUrl = canvas.toDataURL('image/jpeg');
       setPreviewImage(frameSnapshotUrl);
       
       video.pause();
       setCameraPaused(true);
 
-      // NO MORE RAW BUFFERS: Send the base64 image string directly to the pipeline
-      workerRef.current.postMessage({
-        action: 'analyze',
-        imageDataUrl: frameSnapshotUrl
-      });
+      // 2. Extract a tiny 224x224 version for the worker to prevent OOM crashes
+      const analysisData = extractAnalysisBuffer(video);
+      if (analysisData) {
+        workerRef.current.postMessage({
+          action: 'analyze',
+          rgbaData: analysisData.data,
+          width: analysisData.width,
+          height: analysisData.height
+        }, [analysisData.data.buffer]); // Transfer buffer ownership
+      }
 
       setStatus('Analyzing captured frame...');
     }
@@ -124,13 +144,23 @@ export default function PlantAnalyzer() {
         setCameraPaused(false);
         setStreamActive(false); 
         
-        // NO MORE RAW BUFFERS: Send the uploaded file's base64 string directly
-        workerRef.current!.postMessage({
-          action: 'analyze',
-          imageDataUrl: fileDataUrl
-        });
-        
-        setStatus('Analyzing uploaded file metrics...');
+        const img = new Image();
+        img.onload = () => {
+          // Extract a tiny 224x224 version for the worker to prevent OOM crashes
+          const analysisData = extractAnalysisBuffer(img);
+          
+          if (analysisData) {
+            workerRef.current!.postMessage({
+              action: 'analyze',
+              rgbaData: analysisData.data,
+              width: analysisData.width,
+              height: analysisData.height
+            }, [analysisData.data.buffer]); // Transfer buffer ownership
+            
+            setStatus('Analyzing uploaded file metrics...');
+          }
+        };
+        img.src = fileDataUrl;
       };
       reader.readAsDataURL(file);
     }

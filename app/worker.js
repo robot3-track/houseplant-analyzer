@@ -1,5 +1,6 @@
-import { env, pipeline } from "@huggingface/transformers";
+import { env, pipeline, RawImage } from "@huggingface/transformers";
 
+// Strictly allow local files only for 100% offline usage
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = "/models/";
@@ -7,14 +8,14 @@ env.localModelPath = "/models/";
 let classifier = null;
 
 self.addEventListener("message", async (event) => {
-  const { action, imageDataUrl } = event.data;
+  const { action, rgbaData, width, height } = event.data;
 
   if (action === "analyze") {
     try {
       if (!classifier) {
         self.postMessage({ status: "loading", message: "Loading offline vision pipeline..." });
         
-        // Pipeline automatically loads the processor, model, and config together
+        // Initialize the Hugging Face pipeline
         classifier = await pipeline("image-classification", "plant_analyzer_model", {
           quantized: false 
         });
@@ -22,8 +23,12 @@ self.addEventListener("message", async (event) => {
 
       self.postMessage({ status: "processing", message: "Analyzing specimen..." });
 
-      // The pipeline natively handles Data URLs and returns a clean, pre-sorted array of results
-      const results = await classifier(imageDataUrl, { topk: 3 });
+      // Cast the raw memory buffer back into a typed array and convert to a 3-channel RGB image
+      const pixelData = new Uint8Array(rgbaData.buffer || rgbaData);
+      const rawImage = new RawImage(pixelData, width, height, 4).rgb();
+
+      // The pipeline natively accepts the RawImage object and handles the rest
+      const results = await classifier(rawImage, { topk: 3 });
 
       self.postMessage({ status: "success", results: results });
     } catch (error) {
