@@ -24,12 +24,7 @@ export default function PlantAnalyzer() {
       if (error) setStatus(`Diagnostic failure: ${error}`);
       if (status === 'success') {
         setStatus('');
-        // Flatten array if pipeline returns a batch nested array
-        const normalizedResults = Array.isArray(results) && Array.isArray(results[0]) 
-          ? results[0] 
-          : results;
-          
-        setPredictions(normalizedResults || []);
+        setPredictions(results || []);
       }
     };
 
@@ -39,6 +34,7 @@ export default function PlantAnalyzer() {
   const getAdvice = (p: { label: string, score: number }) => {
     if (p.score < 0.05) return "Low baseline confidence. Please ensure the specimen leaf is well-lit and centered inside the frame.";
     if (p.label.toLowerCase().includes("healthy")) return "Your plant appears to be in good condition. Continue your current care routine.";
+    if (p.label.includes("Unmapped Node ID")) return "Disease mathematical node identified, but biological string mapping is missing from config.json.";
     return `This sample shows signs of ${p.label.replace(/[:_]/g, ' ')}. We recommend isolating the plant to prevent spread and consulting a local nursery for specific treatment.`;
   };
 
@@ -82,7 +78,6 @@ export default function PlantAnalyzer() {
     }
   };
 
-  // Extract a fast, low-memory 224x224 buffer for AI processing to prevent OOM
   const extractAnalysisBuffer = (source: HTMLVideoElement | HTMLImageElement) => {
     const analysisCanvas = document.createElement('canvas');
     const ANALYSIS_SIZE = 224; 
@@ -109,7 +104,6 @@ export default function PlantAnalyzer() {
         return;
       }
 
-      // Draw full resolution for the UI preview
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -119,7 +113,6 @@ export default function PlantAnalyzer() {
       video.pause();
       setCameraPaused(true);
 
-      // Extract tiny version for memory-safe Web Worker transfer
       const analysisData = extractAnalysisBuffer(video);
       if (analysisData) {
         workerRef.current.postMessage({
@@ -233,37 +226,23 @@ export default function PlantAnalyzer() {
             <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm transition-all h-full">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Diagnostic Assessment</h2>
               <div className="divide-y divide-stone-100">
-                {predictions.map((p, idx) => {
-                  
-                  // DEVELOPER DEBUG MODE: Render raw object if label is unmapped
-                  let displayString = 'Unknown Classification';
-                  
-                  if (p?.label) {
-                    displayString = String(p.label).replace(/[:_]/g, ' ');
-                  } else if (p && typeof p === 'object') {
-                    displayString = `Unmapped Data: ${JSON.stringify(p)}`;
-                  }
-
-                  const safeScore = typeof p?.score === 'number' ? p.score : (p?.confidence || 0);
-
-                  return (
-                    <div key={idx} className="flex flex-col py-4 first:pt-0 last:pb-0">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="capitalize text-sm font-medium text-stone-700 tracking-tight">
-                          {displayString}
-                        </span>
-                        <span className="text-xs font-mono px-2.5 py-1 rounded-full border bg-emerald-50/60 border-emerald-100 text-emerald-800 font-bold">
-                          {(safeScore * 100).toFixed(0)}% Match
-                        </span>
-                      </div>
-                      {idx === 0 && p?.label && (
-                        <p className="text-xs text-stone-500 italic font-serif bg-stone-50 p-2 rounded">
-                          {getAdvice({ label: String(p.label), score: safeScore })}
-                        </p>
-                      )}
+                {predictions.map((p, idx) => (
+                  <div key={idx} className="flex flex-col py-4 first:pt-0 last:pb-0">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="capitalize text-sm font-medium text-stone-700 tracking-tight">
+                        {p.label.replace(/[:_]/g, ' ')}
+                      </span>
+                      <span className="text-xs font-mono px-2.5 py-1 rounded-full border bg-emerald-50/60 border-emerald-100 text-emerald-800 font-bold">
+                        {(p.score * 100).toFixed(0)}% Match
+                      </span>
                     </div>
-                  );
-                })}
+                    {idx === 0 && (
+                      <p className="text-xs text-stone-500 italic font-serif bg-stone-50 p-2 rounded">
+                        {getAdvice(p)}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           ) : (
