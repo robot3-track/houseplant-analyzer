@@ -240,8 +240,17 @@ export default function PlantAnalyzer() {
                         {(p.score * 100).toFixed(0)}% Match
                       </span>
                     </div>
+                    
+                    {/* Raw Debug Data Block */}
+                    <div className="mt-2 p-3 bg-stone-900 rounded-lg overflow-x-auto">
+                      <p className="text-[9px] text-emerald-400 font-mono mb-1 uppercase tracking-wider">Raw Model Data</p>
+                      <pre className="text-[9px] text-stone-300 font-mono">
+                        {JSON.stringify(p.fullObject, null, 2)}
+                      </pre>
+                    </div>
+
                     {idx === 0 && (
-                      <p className="text-xs text-stone-500 italic font-serif bg-stone-50 p-2 rounded">
+                      <p className="text-xs text-stone-500 italic font-serif bg-stone-50 p-2 rounded mt-2">
                         {getAdvice(p)}
                       </p>
                     )}

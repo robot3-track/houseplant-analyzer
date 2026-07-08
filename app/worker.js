@@ -1,6 +1,6 @@
 import { env, pipeline, RawImage } from "@huggingface/transformers";
 
-// Strictly allow local files only for 100% offline usage
+// Strictly allow local files for offline usage
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = "/models/";
@@ -24,11 +24,14 @@ self.addEventListener("message", async (event) => {
       
       const results = await classifier(rawImage, { topk: 5 });
 
-      // Expose the raw index as 'id' so you can map it to diseases manually
+      // Spreading 'r' retains all raw properties from the model
+      // 'fullObject' is passed to the UI for inspection
       const sanitizedResults = results.map((r, index) => ({
+        ...r, 
         id: index,
         label: r.label || `Unmapped Node ID: ${index}`,
-        score: r.score ?? 0
+        score: r.score ?? 0,
+        fullObject: r 
       }));
 
       self.postMessage({ status: "success", results: sanitizedResults });
