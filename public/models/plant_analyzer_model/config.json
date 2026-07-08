@@ -1,12 +1,12 @@
 {
-  "architectures": ["ResNetForImageClassification"],
-  "model_type": "resnet",
-  "num_channels": 3,
+  "_name_or_path": "plant_analyzer_model",
+  "architectures": ["ViTForImageClassification"],
+  "model_type": "vit",
   "id2label": {
-    "0": "Healthy Plant Leaves",
-    "1": "Fungal Spot Damage",
-    "2": "Bacterial Blight Infection",
-    "3": "Insect Infestation Defoliation",
-    "4": "Nutrient Deficiency Chlorosis"
+    "0": "Healthy",
+    "1": "Early Blight",
+    "2": "Late Blight",
+    "3": "Insect Defoliation",
+    "4": "Powdery Mildew"
   }
 }
