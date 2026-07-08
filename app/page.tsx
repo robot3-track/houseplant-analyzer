@@ -18,205 +18,87 @@ export default function PlantAnalyzer() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
   useEffect(() => {
-    workerRef.current = new Worker(new URL("./worker.js", import.meta.url), {
-      type: "module",
-    });
-
+    workerRef.current = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
     workerRef.current.onmessage = (event) => {
-      const { status: workerStatus, message, results: workerResults, error } = event.data;
-
-      if (workerStatus === "loading" || workerStatus === "processing") {
-        setStatus(message);
-      } else if (workerStatus === "success") {
-        setResults(workerResults);
-        setStatus("Analysis complete!");
-      } else if (workerStatus === "error") {
-        setStatus(`Error: ${error}`);
-      }
+      const { status, results, error } = event.data;
+      if (status === "success") { setResults(results); setStatus("Analysis complete!"); }
+      else if (status === "error") setStatus(`Error: ${error}`);
+      else setStatus(status);
     };
-
-    return () => {
-      workerRef.current?.terminate();
-    };
+    return () => workerRef.current?.terminate();
   }, []);
 
   const toggleCamera = async () => {
     if (isCameraActive) {
-      stopCamera();
+      const stream = videoRef.current?.srcObject as MediaStream;
+      stream?.getTracks().forEach(track => track.stop());
+      setIsCameraActive(false);
     } else {
-      setImageSrc(null);
-      setResults([]);
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false,
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           setIsCameraActive(true);
-          setStatus("Camera active...");
+          setStatus("Camera active");
         }
-      } catch (err) {
-        setStatus("Could not access camera.");
-        console.error(err);
-      }
+      } catch (err) { setStatus("Camera access denied."); }
     }
   };
 
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
-    setIsCameraActive(false);
+  const processImage = (imgElement: HTMLImageElement | HTMLVideoElement) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 224; // Force ResNet-compatible size
+    canvas.height = 224;
+    const ctx = canvas.getContext("2d");
+    ctx?.drawImage(imgElement, 0, 0, 224, 224);
+    const imageData = ctx?.getImageData(0, 0, 224, 224);
+    workerRef.current?.postMessage({ image: imageData });
+    setStatus("Analyzing...");
   };
 
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
-
-      if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const dataUrl = canvas.toDataURL("image/jpeg");
-        setImageSrc(dataUrl);
-        stopCamera();
-
-        analyzeImage(context.getImageData(0, 0, canvas.width, canvas.height));
-      }
-    }
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-
-    stopCamera();
-    setResults([]);
-    
     const reader = new FileReader();
-    reader.onload = (e) => {
-      const targetResult = e.target?.result as string;
-      setImageSrc(targetResult);
-
+    reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          analyzeImage(ctx.getImageData(0, 0, canvas.width, canvas.height));
-        }
+        setImageSrc(img.src);
+        processImage(img);
       };
-      img.src = targetResult;
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
 
-  const analyzeImage = (imageData: ImageData) => {
-    if (workerRef.current) {
-      workerRef.current.postMessage({ image: imageData });
-    }
-  };
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-start bg-white text-black p-12 sm:p-24 selection:bg-gray-100">
-      {/* App Header Section */}
-      <header className="text-center space-y-2 mb-10">
-        <h1 className="text-4xl font-light tracking-tight text-black">
-          Edge Plant Analyzer
-        </h1>
-        {/* Grey subtitle with slight cursive styling */}
-        <p className="text-gray-400 text-base italic font-serif tracking-wide">
-          100% offline diagnostic intelligence
-        </p>
+    <main className="flex min-h-screen flex-col items-center bg-white text-black p-12">
+      <header className="text-center mb-10">
+        <h1 className="text-4xl font-light text-black">Edge Plant Analyzer</h1>
+        <p className="text-gray-400 italic font-serif">100% offline diagnostic intelligence</p>
       </header>
 
-      {/* Top Status Bar Indicator */}
-      <div className="w-full max-w-xl border-b border-gray-200 pb-4 mb-8 flex justify-between items-center text-sm">
-        <span className="text-gray-400">System Status:</span>
-        <code className="font-mono bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-700">
-          {status}
-        </code>
-      </div>
-
-      {/* Viewport Box */}
-      <div className="relative flex border border-gray-200 rounded-xl overflow-hidden bg-gray-50 w-full max-w-xl aspect-video justify-center items-center shadow-sm">
-        {isCameraActive && (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className="w-full h-full object-cover"
-          />
-        )}
-
-        {imageSrc && !isCameraActive && (
-          <img
-            src={imageSrc}
-            alt="Upload preview"
-            className="w-full h-full object-contain"
-          />
-        )}
-
-        {!isCameraActive && !imageSrc && (
-          <span className="text-gray-400 text-xs italic font-serif">
-            No active stream or image asset selected
-          </span>
+      <div className="relative w-full max-w-xl aspect-video bg-gray-100 rounded-xl overflow-hidden shadow-sm border border-gray-200">
+        {isCameraActive ? (
+          <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+        ) : imageSrc ? (
+          <img src={imageSrc} className="w-full h-full object-contain" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-gray-400 italic font-serif">No media active</div>
         )}
       </div>
 
-      {/* Action Controller Hub */}
-      <div className="flex flex-row gap-4 my-8 text-xs font-mono">
-        <button
-          onClick={toggleCamera}
-          className="rounded-lg border border-gray-200 px-4 py-2 bg-white hover:bg-gray-50 text-black shadow-sm transition-all"
-        >
-          {isCameraActive ? "Close Camera" : "Open Camera"}
-        </button>
-
-        {isCameraActive && (
-          <button
-            onClick={capturePhoto}
-            className="rounded-lg border border-transparent px-4 py-2 bg-gray-900 text-white hover:bg-black shadow-sm transition-all"
-          >
-            Capture Frame
-          </button>
-        )}
-
-        <label className="rounded-lg border border-gray-200 px-4 py-2 bg-white hover:bg-gray-50 text-black shadow-sm transition-all cursor-pointer">
-          Upload Image
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
+      <div className="flex gap-4 my-8 font-mono text-xs">
+        <button onClick={toggleCamera} className="border p-2 rounded hover:bg-gray-50">{isCameraActive ? "Stop Camera" : "Open Camera"}</button>
+        {isCameraActive && <button onClick={() => processImage(videoRef.current!)} className="bg-black text-white p-2 rounded">Capture & Analyze</button>}
+        <label className="border p-2 rounded cursor-pointer hover:bg-gray-50">Upload Image<input type="file" onChange={handleFileUpload} className="hidden" /></label>
       </div>
 
-      <canvas ref={canvasRef} className="hidden" />
-
-      {/* Probability Array Feedback list */}
-      <div className="w-full max-w-xl space-y-3">
-        {results.map((res, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between p-4 border border-gray-100 rounded-lg bg-white shadow-sm"
-          >
-            <span className="text-sm font-medium text-gray-900">
-              {res.label}
-            </span>
-            <span className="text-xs font-mono font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded">
-              {(res.score * 100).toFixed(2)}%
-            </span>
+      <div className="w-full max-w-xl space-y-2">
+        {results.map((res, i) => (
+          <div key={i} className="flex justify-between p-3 border-b text-sm">
+            <span>{res.label}</span>
+            <span className="font-bold">{(res.score * 100).toFixed(1)}%</span>
           </div>
         ))}
       </div>
