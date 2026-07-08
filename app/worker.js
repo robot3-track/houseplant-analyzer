@@ -6,14 +6,13 @@ env.localModelPath = "/models/";
 
 let classifier = null;
 
-// THIS IS YOUR SOURCE OF TRUTH
-// If the app labels something wrong, change the name here.
+// This defines the ground truth for your specific model
 const LABEL_MAP = {
-  0: "Leaf Miner", // Update this based on the index you see for this image
-  1: "Powdery Mildew",
-  2: "Healthy",
-  3: "Early Blight",
-  4: "Late Blight"
+  "0": "Leaf Miner",
+  "1": "Powdery Mildew",
+  "2": "Healthy",
+  "3": "Early Blight",
+  "4": "Late Blight"
 };
 
 self.addEventListener("message", async (event) => {
@@ -29,15 +28,17 @@ self.addEventListener("message", async (event) => {
       const rawImage = new RawImage(pixelData, width, height, 4).rgb();
       const results = await classifier(rawImage, { topk: 5 });
 
-      // Sanitized results with aggressive fallback
-      const sanitizedResults = results.map((r, index) => {
-        // 1. Try model label, 2. Try our map, 3. Fallback to index
-        const label = r.label || LABEL_MAP[index] || `Node ID: ${index}`;
+      // DEBUG: View the model output structure in your F12 console
+      console.log("Raw Model Output:", results);
+
+      const sanitizedResults = results.map((r) => {
+        // We use r.label (the model's class ID) instead of the loop index
+        // If r.label is missing, we fallback to the index found in the result if possible
+        const classId = r.label || "unknown";
         
         return {
-          ...r,
-          id: index,
-          label: label,
+          id: classId,
+          label: LABEL_MAP[classId] || `Unknown ID: ${classId}`,
           score: r.score ?? 0
         };
       });
