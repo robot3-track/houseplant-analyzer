@@ -32,7 +32,6 @@ export default function PlantAnalyzer() {
   }, []);
 
   const getAdvice = (p: { label: string, score: number }) => {
-    // Safety check for p.label before accessing properties
     const label = p.label || "";
     if (p.score < 0.05) return "Low baseline confidence. Please ensure the specimen leaf is well-lit and centered inside the frame.";
     if (label.toLowerCase().includes("healthy")) return "Your plant appears to be in good condition. Continue your current care routine.";
@@ -231,10 +230,12 @@ export default function PlantAnalyzer() {
                 {predictions.map((p, idx) => (
                   <div key={idx} className="flex flex-col py-4 first:pt-0 last:pb-0">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="capitalize text-sm font-medium text-stone-700 tracking-tight">
-                        {/* FIXED: Added a safety fallback for missing labels */}
-                        {(p.label || "Unknown").replace(/[:_]/g, ' ')}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="capitalize text-sm font-medium text-stone-700 tracking-tight">
+                          {(p.label || "Unknown").replace(/[:_]/g, ' ')}
+                        </span>
+                        <span className="text-[10px] font-mono text-stone-400">Node ID: {p.id}</span>
+                      </div>
                       <span className="text-xs font-mono px-2.5 py-1 rounded-full border bg-emerald-50/60 border-emerald-100 text-emerald-800 font-bold">
                         {(p.score * 100).toFixed(0)}% Match
                       </span>
