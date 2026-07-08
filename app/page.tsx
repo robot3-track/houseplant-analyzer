@@ -8,6 +8,8 @@ export default function PlantAnalyzer() {
   const workerRef = useRef<Worker | null>(null);
   
   const [streamActive, setStreamActive] = useState(false);
+  const [cameraPaused, setCameraPaused] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [predictions, setPredictions] = useState<any[]>([]);
 
@@ -30,13 +32,16 @@ export default function PlantAnalyzer() {
   }, []);
 
   const getAdvice = (p: any) => {
-    if (p.label.includes("Invalid")) return "The model could not identify a valid plant. Please ensure the sample is clear, well-lit, and centered.";
+    if (!p || !p.label) return "No diagnostic data available.";
+    if (p.score < 0.05) return "Low baseline confidence. Please ensure the specimen leaf is well-lit and centered inside the frame.";
     if (p.label.toLowerCase().includes("healthy")) return "Your plant appears to be in good condition. Continue your current care routine.";
     return `This sample shows signs of ${p.label.replace(/[:_]/g, ' ')}. We recommend isolating the plant to prevent spread and consulting a local nursery for specific treatment.`;
   };
 
   const startCamera = async () => {
     try {
+      setPreviewImage(null);
+      setCameraPaused(false);
       const constraints: MediaStreamConstraints = {
         video: { facingMode: { ideal: 'environment' } },
         audio: false,
@@ -62,6 +67,17 @@ export default function PlantAnalyzer() {
     }
   };
 
+  const resumeCameraStream = () => {
+    setPreviewImage(null);
+    setCameraPaused(false);
+    setStatus('');
+    if (videoRef.current && streamActive) {
+      videoRef.current.play().catch(() => {});
+    } else {
+      startCamera();
+    }
+  };
+
   const captureAndAnalyze = () => {
     if (!videoRef.current || !canvasRef.current || !workerRef.current) return;
 
@@ -70,7 +86,6 @@ export default function PlantAnalyzer() {
     const ctx = canvas.getContext('2d');
 
     if (ctx) {
-      // Prevent analyzing if video hasn't loaded dimensions yet
       if (video.videoWidth === 0 || video.videoHeight === 0) {
         setStatus('Camera viewport stabilizing. Try again...');
         return;
@@ -80,10 +95,17 @@ export default function PlantAnalyzer() {
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Extract uncompressed byte data safely on the main thread
+      // Immediately pull out a snapshot string to create a visual freeze frame
+      const frameSnapshotUrl = canvas.toDataURL('image/jpeg');
+      setPreviewImage(frameSnapshotUrl);
+      
+      // Pause the live stream element so the user sees exactly what frame was gathered
+      video.pause();
+      setCameraPaused(true);
+
+      // Extract uncompressed byte array for processing
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // Pass raw arrays with zero-copy transferable memory allocation for maximum efficiency
       workerRef.current.postMessage({
         action: 'analyze',
         rgbaData: imageData.data,
@@ -91,7 +113,7 @@ export default function PlantAnalyzer() {
         height: imageData.height
       }, [imageData.data.buffer]);
 
-      setStatus('Analyzing camera feed...');
+      setStatus('Analyzing captured frame...');
     }
   };
 
@@ -102,6 +124,12 @@ export default function PlantAnalyzer() {
       const reader = new FileReader();
       
       reader.onload = (e) => {
+        const fileDataUrl = e.target?.result as string;
+        
+        // Render a visible preview image instead of the video stream instantly
+        setPreviewImage(fileDataUrl);
+        setCameraPaused(false);
+        
         const img = new Image();
         img.onload = () => {
           const canvas = canvasRef.current;
@@ -111,7 +139,6 @@ export default function PlantAnalyzer() {
             canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
             
-            // Extract uncompressed byte data from upload source
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
             workerRef.current!.postMessage({
@@ -121,10 +148,10 @@ export default function PlantAnalyzer() {
               height: imageData.height
             }, [imageData.data.buffer]);
             
-            setStatus('Analyzing uploaded image matrix...');
+            setStatus('Analyzing uploaded file metrics...');
           }
         };
-        img.src = e.target?.result as string;
+        img.src = fileDataUrl;
       };
       reader.readAsDataURL(file);
     }
@@ -142,10 +169,17 @@ export default function PlantAnalyzer() {
         
         <div className="flex flex-col gap-4 w-full">
           <div className="relative w-full aspect-[4/3] bg-stone-100 rounded-2xl overflow-hidden border border-stone-200/60 shadow-sm flex items-center justify-center">
-            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            
+            {previewImage ? (
+              // Visible visual container for file uploads and camera freezes
+              <img src={previewImage} alt="Analysis Target Specimen" className="w-full h-full object-cover" />
+            ) : (
+              <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            )}
+            
             <canvas ref={canvasRef} className="hidden" />
             
-            {!streamActive && (
+            {!streamActive && !previewImage && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-stone-100 p-6 text-center">
                 <span className="text-xs tracking-widest text-stone-400 uppercase font-medium mb-3">Hardware Ready</span>
                 <p className="text-sm text-stone-500 max-w-xs">Point device directly at leaf lesions or discoloration fields for dynamic sampling.</p>
@@ -154,14 +188,21 @@ export default function PlantAnalyzer() {
           </div>
 
           <div className="flex flex-col gap-2">
-            {!streamActive ? (
+            {!streamActive && !previewImage ? (
               <button onClick={startCamera} className="w-full bg-stone-900 text-stone-50 font-medium text-sm tracking-wide py-4 px-6 rounded-xl hover:bg-stone-800 transition-all shadow-sm active:scale-[0.99]">
                 Initialize Viewport Stream
               </button>
             ) : (
-              <button onClick={captureAndAnalyze} className="w-full bg-emerald-800 text-stone-50 font-medium text-sm tracking-wide py-4 px-6 rounded-xl hover:bg-emerald-900 transition-all shadow-sm active:scale-[0.99]">
-                Evaluate Leaf Sample
-              </button>
+              <>
+                {(cameraPaused || previewImage) && (
+                  <button onClick={resumeCameraStream} className="w-full bg-stone-600 text-stone-50 font-medium text-sm tracking-wide py-3 px-6 rounded-xl hover:bg-stone-700 transition-all shadow-sm active:scale-[0.99]">
+                    Resume Live Camera Stream
+                  </button>
+                )}
+                <button onClick={captureAndAnalyze} className="w-full bg-emerald-800 text-stone-50 font-medium text-sm tracking-wide py-4 px-6 rounded-xl hover:bg-emerald-900 transition-all shadow-sm active:scale-[0.99]">
+                  Evaluate Leaf Sample
+                </button>
+              </>
             )}
 
             <label className="cursor-pointer w-full text-center bg-stone-200 text-stone-800 font-medium text-sm tracking-wide py-4 px-6 rounded-xl hover:bg-stone-300 transition-all shadow-sm active:scale-[0.99]">

@@ -26,7 +26,6 @@ self.addEventListener("message", async (event) => {
       self.postMessage({ status: "processing", message: "Analyzing cell structures..." });
 
       // 2. Instantiate RawImage directly from raw uncompressed RGBA pixel arrays
-      // We convert it to standard 3-channel .rgb() immediately to match what the model expects
       const rawImage = new RawImage(rgbaData, width, height, 4).rgb();
       const inputs = await processor(rawImage);
 
@@ -50,11 +49,8 @@ self.addEventListener("message", async (event) => {
         }))
         .sort((a, b) => b.score - a.score);
 
-      // 6. Confidence threshold check: Adjusted to 0.05 (5%) to allow valid detections
-      const topResult = sortedResults[0];
-      const finalResults = topResult.score < 0.05 
-        ? [{ label: "Invalid/Unrecognized Sample", score: 0 }] 
-        : sortedResults.slice(0, 3);
+      // 6. Return top 3 predictions directly without truncating via arbitrary cutoffs
+      const finalResults = sortedResults.slice(0, 3);
 
       self.postMessage({ status: "success", results: finalResults });
     } catch (error) {
