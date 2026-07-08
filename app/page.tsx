@@ -101,14 +101,11 @@ export default function PlantAnalyzer() {
       video.pause();
       setCameraPaused(true);
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
+      // NO MORE RAW BUFFERS: Send the base64 image string directly to the pipeline
       workerRef.current.postMessage({
         action: 'analyze',
-        rgbaData: imageData.data,
-        width: imageData.width,
-        height: imageData.height
-      }, [imageData.data.buffer]);
+        imageDataUrl: frameSnapshotUrl
+      });
 
       setStatus('Analyzing captured frame...');
     }
@@ -127,29 +124,13 @@ export default function PlantAnalyzer() {
         setCameraPaused(false);
         setStreamActive(false); 
         
-        const img = new Image();
-        img.onload = () => {
-          const canvas = canvasRef.current;
-          const ctx = canvas?.getContext('2d');
-          if (canvas && ctx) {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            // Explicitly map the drawn image to the newly scaled canvas dimensions
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            workerRef.current!.postMessage({
-              action: 'analyze',
-              rgbaData: imageData.data,
-              width: imageData.width,
-              height: imageData.height
-            }, [imageData.data.buffer]);
-            
-            setStatus('Analyzing uploaded file metrics...');
-          }
-        };
-        img.src = fileDataUrl;
+        // NO MORE RAW BUFFERS: Send the uploaded file's base64 string directly
+        workerRef.current!.postMessage({
+          action: 'analyze',
+          imageDataUrl: fileDataUrl
+        });
+        
+        setStatus('Analyzing uploaded file metrics...');
       };
       reader.readAsDataURL(file);
     }
