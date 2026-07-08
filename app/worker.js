@@ -33,7 +33,7 @@ self.addEventListener("message", async (event) => {
     // 3. Run direct inference through the model weights
     const { logits } = await model(inputs);
     
-    // 4. Apply Softmax for accurate percentages and fix negative values
+    // 4. Apply Softmax for accurate percentages and fix negative values[cite: 2]
     const maxLogit = Math.max(...logits.data);
     const scores = logits.data.map(l => Math.exp(l - maxLogit));
     const sumScores = scores.reduce((a, b) => a + b, 0);
@@ -50,9 +50,10 @@ self.addEventListener("message", async (event) => {
       }))
       .sort((a, b) => b.score - a.score);
 
-    // 6. Confidence threshold check: if below 20%, mark as Invalid[cite: 2]
+    // 6. Confidence threshold check: adjusted to 0.05 (5%) to be more permissive[cite: 2]
+    // Log for debugging if needed: console.log("Raw Model Predictions:", sortedResults);
     const topResult = sortedResults[0];
-    const finalResults = topResult.score < 0.2 
+    const finalResults = topResult.score < 0.05 
       ? [{ label: "Invalid/Unrecognized Sample", score: 0 }] 
       : sortedResults.slice(0, 3);
 
