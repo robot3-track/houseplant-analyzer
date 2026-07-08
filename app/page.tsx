@@ -127,21 +127,28 @@ export default function PlantAnalyzer() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Status:&nbsp;
-          <code className="font-bold">{status}</code>
+    <main className="flex min-h-screen flex-col items-center justify-start bg-white text-black p-12 sm:p-24 selection:bg-gray-100">
+      {/* App Header Section */}
+      <header className="text-center space-y-2 mb-10">
+        <h1 className="text-4xl font-light tracking-tight text-black">
+          Edge Plant Analyzer
+        </h1>
+        {/* Grey subtitle with slight cursive styling */}
+        <p className="text-gray-400 text-base italic font-serif tracking-wide">
+          100% offline diagnostic intelligence
         </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <span className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0">
-            Edge Plant Analyzer
-          </span>
-        </div>
+      </header>
+
+      {/* Top Status Bar Indicator */}
+      <div className="w-full max-w-xl border-b border-gray-200 pb-4 mb-8 flex justify-between items-center text-sm">
+        <span className="text-gray-400">System Status:</span>
+        <code className="font-mono bg-gray-50 border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-700">
+          {status}
+        </code>
       </div>
 
-      {/* Main Viewport display */}
-      <div className="relative flex place-items-center my-12 border border-gray-300 dark:border-neutral-800 rounded-xl overflow-hidden bg-zinc-800/10 w-[400px] h-[300px] justify-center items-center">
+      {/* Viewport Box */}
+      <div className="relative flex border border-gray-200 rounded-xl overflow-hidden bg-gray-50 w-full max-w-xl aspect-video justify-center items-center shadow-sm">
         {isCameraActive && (
           <video
             ref={videoRef}
@@ -160,15 +167,17 @@ export default function PlantAnalyzer() {
         )}
 
         {!isCameraActive && !imageSrc && (
-          <span className="text-gray-400 text-xs px-4 text-center">No image selected or camera active</span>
+          <span className="text-gray-400 text-xs italic font-serif">
+            No active stream or image asset selected
+          </span>
         )}
       </div>
 
-      {/* Control Action Buttons using exact original styling blueprints */}
-      <div className="flex flex-row gap-4 mb-12 font-mono text-sm">
+      {/* Action Controller Hub */}
+      <div className="flex flex-row gap-4 my-8 text-xs font-mono">
         <button
           onClick={toggleCamera}
-          className="rounded-xl border border-transparent px-5 py-3 bg-gray-200 dark:bg-zinc-800 hover:bg-gray-300 dark:hover:bg-zinc-700 transition-colors"
+          className="rounded-lg border border-gray-200 px-4 py-2 bg-white hover:bg-gray-50 text-black shadow-sm transition-all"
         >
           {isCameraActive ? "Close Camera" : "Open Camera"}
         </button>
@@ -176,13 +185,13 @@ export default function PlantAnalyzer() {
         {isCameraActive && (
           <button
             onClick={capturePhoto}
-            className="rounded-xl border border-transparent px-5 py-3 bg-amber-500 text-black hover:bg-amber-600 transition-colors"
+            className="rounded-lg border border-transparent px-4 py-2 bg-gray-900 text-white hover:bg-black shadow-sm transition-all"
           >
-            Capture
+            Capture Frame
           </button>
         )}
 
-        <label className="rounded-xl border border-transparent px-5 py-3 bg-gray-200 dark:bg-zinc-800 hover:bg-gray-300 dark:hover:bg-zinc-700 transition-colors cursor-pointer">
+        <label className="rounded-lg border border-gray-200 px-4 py-2 bg-white hover:bg-gray-50 text-black shadow-sm transition-all cursor-pointer">
           Upload Image
           <input
             type="file"
@@ -195,22 +204,19 @@ export default function PlantAnalyzer() {
 
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Results Display Grid */}
-      <div className="grid text-center lg:max-w-5xl lg:w-full lg:grid-cols-3 lg:text-left gap-4 font-mono">
+      {/* Probability Array Feedback list */}
+      <div className="w-full max-w-xl space-y-3">
         {results.map((res, index) => (
           <div
             key={index}
-            className="group rounded-lg border border-transparent px-5 py-4 transition-colors border-gray-300 bg-gray-100 dark:border-neutral-700 dark:bg-neutral-800/30"
+            className="flex items-center justify-between p-4 border border-gray-100 rounded-lg bg-white shadow-sm"
           >
-            <h2 className="mb-3 text-lg font-semibold">
-              {res.label}{" "}
-              <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-                -&gt;
-              </span>
-            </h2>
-            <p className="m-0 text-sm opacity-70 font-bold text-emerald-500">
-              {(res.score * 100).toFixed(2)}% Confidence
-            </p>
+            <span className="text-sm font-medium text-gray-900">
+              {res.label}
+            </span>
+            <span className="text-xs font-mono font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded">
+              {(res.score * 100).toFixed(2)}%
+            </span>
           </div>
         ))}
       </div>
