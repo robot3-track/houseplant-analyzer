@@ -6,13 +6,22 @@ env.localModelPath = "/models/";
 
 let classifier = null;
 
+// THIS IS YOUR SOURCE OF TRUTH
+// If the app labels something wrong, change the name here.
+const LABEL_MAP = {
+  0: "Leaf Miner", // Update this based on the index you see for this image
+  1: "Powdery Mildew",
+  2: "Healthy",
+  3: "Early Blight",
+  4: "Late Blight"
+};
+
 self.addEventListener("message", async (event) => {
   const { action, rgbaData, width, height } = event.data;
 
   if (action === "analyze") {
     try {
       if (!classifier) {
-        // Pipeline will automatically load config.json if it exists
         classifier = await pipeline("image-classification", "plant_analyzer_model", { quantized: false });
       }
 
@@ -20,18 +29,16 @@ self.addEventListener("message", async (event) => {
       const rawImage = new RawImage(pixelData, width, height, 4).rgb();
       const results = await classifier(rawImage, { topk: 5 });
 
-      // DEBUG: Log the raw results to see what the model provides
-      console.log("WORKER: Raw pipeline results:", results);
-
-      const sanitizedResults = results.map((r) => {
-        // r.label will be populated automatically if config.json is correct.
-        // If r.label is undefined, we return the internal ID or a placeholder.
+      // Sanitized results with aggressive fallback
+      const sanitizedResults = results.map((r, index) => {
+        // 1. Try model label, 2. Try our map, 3. Fallback to index
+        const label = r.label || LABEL_MAP[index] || `Node ID: ${index}`;
+        
         return {
           ...r,
-          id: r.id || "unknown", // The model usually returns the class ID
-          label: r.label || `Node ID: ${r.id}`, 
-          score: r.score ?? 0,
-          fullObject: r
+          id: index,
+          label: label,
+          score: r.score ?? 0
         };
       });
 
