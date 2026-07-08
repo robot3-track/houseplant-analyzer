@@ -31,13 +31,21 @@ export default function PlantAnalyzer() {
     return () => workerRef.current?.terminate();
   }, []);
 
+  // UPDATED: More specific advice based on your mapped labels
   const getAdvice = (p: { label: string, score: number }) => {
-    const label = p.label || "";
-    if (p.score < 0.05) return "Low baseline confidence. Please ensure the specimen leaf is well-lit and centered inside the frame.";
-    if (label.toLowerCase().includes("healthy")) return "Your plant appears to be in good condition. Continue your current care routine.";
-    if (label.includes("Unmapped Node ID")) return "Disease mathematical node identified, but biological string mapping is missing from config.json.";
-    return `This sample shows signs of ${label.replace(/[:_]/g, ' ')}. We recommend isolating the plant to prevent spread and consulting a local nursery for specific treatment.`;
+    const label = p.label.toLowerCase();
+    if (p.score < 0.10) return "Confidence too low for reliable diagnosis. Ensure lighting is adequate and the leaf is centered.";
+    if (label.includes("healthy")) return "Your plant appears to be in good condition. Continue your current care routine.";
+    if (label.includes("powdery mildew")) return "Powdery Mildew detected. Isolate the plant to prevent spread, improve air circulation, and apply a fungicide or neem oil solution.";
+    if (label.includes("early blight")) return "Early Blight detected. Remove affected lower leaves, mulch the soil to prevent spore splash, and avoid overhead watering.";
+    if (label.includes("late blight")) return "Late Blight detected. This is a severe fungal infection. Immediate removal of the plant is recommended to prevent spreading to other crops.";
+    if (label.includes("septoria leaf spot")) return "Septoria Leaf Spot detected. Prune infected leaves and increase spacing between plants to maximize airflow.";
+    return `Possible signs of ${p.label}. Monitor closely and consult a local nursery for targeted treatment.`;
   };
+
+  // FILTERING LOGIC: 10% threshold
+  const filtered = predictions.filter(p => p.score >= 0.10);
+  const displayPredictions = filtered.length > 0 ? filtered : predictions;
 
   const startCamera = async () => {
     try {
@@ -223,32 +231,22 @@ export default function PlantAnalyzer() {
         </div>
 
         <section className="w-full h-full flex flex-col justify-start">
-          {predictions.length > 0 ? (
+          {displayPredictions.length > 0 ? (
             <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm transition-all h-full">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Diagnostic Assessment</h2>
               <div className="divide-y divide-stone-100">
-                {predictions.map((p, idx) => (
+                {displayPredictions.map((p, idx) => (
                   <div key={idx} className="flex flex-col py-4 first:pt-0 last:pb-0">
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex flex-col">
                         <span className="capitalize text-sm font-medium text-stone-700 tracking-tight">
-                          {(p.label || "Unknown").replace(/[:_]/g, ' ')}
+                          {p.label.replace(/[:_]/g, ' ')}
                         </span>
-                        <span className="text-[10px] font-mono text-stone-400">Node ID: {p.id}</span>
                       </div>
                       <span className="text-xs font-mono px-2.5 py-1 rounded-full border bg-emerald-50/60 border-emerald-100 text-emerald-800 font-bold">
                         {(p.score * 100).toFixed(0)}% Match
                       </span>
                     </div>
-                    
-                    {/* Raw Debug Data Block */}
-                    <div className="mt-2 p-3 bg-stone-900 rounded-lg overflow-x-auto">
-                      <p className="text-[9px] text-emerald-400 font-mono mb-1 uppercase tracking-wider">Raw Model Data</p>
-                      <pre className="text-[9px] text-stone-300 font-mono">
-                        {JSON.stringify(p.fullObject, null, 2)}
-                      </pre>
-                    </div>
-
                     {idx === 0 && (
                       <p className="text-xs text-stone-500 italic font-serif bg-stone-50 p-2 rounded mt-2">
                         {getAdvice(p)}
