@@ -1,20 +1,18 @@
 {
-  "architectures": [
-    "ViTForImageClassification"
-  ],
+  "architectures": ["ViTForImageClassification"],
   "model_type": "vit",
   "id2label": {
-    "0": "Powdery Mildew",
-    "1": "Healthy",
-    "2": "Early Blight",
-    "3": "Late Blight",
-    "4": "Septoria Leaf Spot"
+    "0": "ID_0",
+    "1": "ID_1",
+    "2": "ID_2",
+    "3": "ID_3",
+    "4": "ID_4"
   },
   "label2id": {
-    "Powdery Mildew": "0",
-    "Healthy": "1",
-    "Early Blight": "2",
-    "Late Blight": "3",
-    "Septoria Leaf Spot": "4"
+    "ID_0": 0,
+    "ID_1": 1,
+    "ID_2": 2,
+    "ID_3": 3,
+    "ID_4": 4
   }
 }
