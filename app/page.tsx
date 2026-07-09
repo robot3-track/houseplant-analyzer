@@ -164,7 +164,6 @@ export default function PlantAnalyzer() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full my-auto">
         
-        {/* Left Column: Camera / Image Preview */}
         <div className="flex flex-col gap-4 w-full">
           <div className="relative w-full aspect-[4/3] bg-stone-100 rounded-2xl overflow-hidden border border-stone-200/60 shadow-sm flex items-center justify-center">
             
@@ -215,7 +214,6 @@ export default function PlantAnalyzer() {
           </div>
         </div>
 
-        {/* Right Column: Diagnostic Assessment */}
         <section className="w-full h-full flex flex-col justify-start">
           <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm h-full">
             <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Diagnostic Assessment</h2>
@@ -226,9 +224,9 @@ export default function PlantAnalyzer() {
                   <div key={idx} className="p-4 border border-stone-200 rounded-xl bg-stone-50/50 shadow-sm">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        {/* If label is missing, show a fallback, but the debug block below handles the mapping discovery */}
+                        {/* THE FIX: We check if p.label exists. If not, we print the Model ID (Case ID) */}
                         <span className="text-lg font-bold text-stone-900">
-                          {p.label || "Unknown Diagnosis"}
+                          {p.label && p.label !== "N/A" ? p.label : `Model ID Detected: ${p.caseId}`}
                         </span>
                       </div>
                       <span className="text-xs font-bold text-emerald-800 bg-emerald-100/60 px-3 py-1.5 rounded-full">
@@ -236,7 +234,6 @@ export default function PlantAnalyzer() {
                       </span>
                     </div>
 
-                    {/* Diagnostic Debug Block - Reveals the hidden ID */}
                     <div className="mt-2 bg-stone-900 rounded-lg p-3 overflow-x-auto">
                       <span className="text-[10px] text-emerald-400 font-mono mb-1.5 block uppercase tracking-wider">Debug: Raw Model Data</span>
                       <pre className="text-[11px] text-stone-300 font-mono leading-relaxed whitespace-pre-wrap">

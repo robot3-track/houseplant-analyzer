@@ -12,7 +12,6 @@ self.addEventListener("message", async (event) => {
   if (action === "analyze") {
     try {
       if (!classifier) {
-        // Matches your folder structure: /models/plant_analyzer_model/onnx/model_quantized.onnx
         classifier = await pipeline("image-classification", "plant_analyzer_model", { quantized: true });
       }
 
@@ -21,8 +20,16 @@ self.addEventListener("message", async (event) => {
       
       const results = await classifier(rawImage, { topk: 5 });
 
-      // Pass the raw result objects so we can inspect every key (label, id, class_index, etc.)
-      self.postMessage({ status: "success", results: results });
+      // FIX: We explicitly capture the index (0, 1, 2, 3, 4) as the Case ID
+      // This ensures we always have an ID to reference, even if the model metadata is empty.
+      const sanitizedResults = results.map((r, index) => ({
+        caseId: index, 
+        label: r.label,
+        score: r.score ?? 0,
+        raw: r // Keep this for your F12 console inspection
+      }));
+
+      self.postMessage({ status: "success", results: sanitizedResults });
     } catch (error) {
       console.error("Worker Error:", error);
       self.postMessage({ status: "error", error: error.message });
