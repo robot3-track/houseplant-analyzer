@@ -2,17 +2,17 @@
   "architectures": ["ViTForImageClassification"],
   "model_type": "vit",
   "id2label": {
-    "0": "ID_0",
-    "1": "ID_1",
-    "2": "ID_2",
-    "3": "ID_3",
-    "4": "ID_4"
+    "0": "Class 0",
+    "1": "Class 1",
+    "2": "Class 2",
+    "3": "Class 3",
+    "4": "Class 4"
   },
   "label2id": {
-    "ID_0": 0,
-    "ID_1": 1,
-    "ID_2": 2,
-    "ID_3": 3,
-    "ID_4": 4
+    "Class 0": 0,
+    "Class 1": 1,
+    "Class 2": 2,
+    "Class 3": 3,
+    "Class 4": 4
   }
 }

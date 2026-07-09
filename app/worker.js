@@ -1,5 +1,6 @@
 import { env, pipeline, RawImage } from "@huggingface/transformers";
 
+// 1. Force the environment to look only in your local public/models directory
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = "/models/";
@@ -11,28 +12,36 @@ self.addEventListener("message", async (event) => {
 
   if (action === "analyze") {
     try {
+      // 2. Explicitly define the pipeline as an image-classification task.
+      // This prevents the library from guessing (incorrectly) that it is an NLP model.
       if (!classifier) {
-        classifier = await pipeline("image-classification", "plant_analyzer_model", { quantized: true });
+        classifier = await pipeline("image-classification", "plant_analyzer_model", { 
+          quantized: true,
+          task: "image-classification" // THIS IS THE FIX: Forces the pipeline type
+        });
       }
 
+      // 3. Process the pixel data
       const pixelData = new Uint8Array(rgbaData.buffer || rgbaData);
       const rawImage = new RawImage(pixelData, width, height, 4).rgb();
       
+      // 4. Run inference
       const results = await classifier(rawImage, { topk: 5 });
 
-      // FIX: We explicitly capture the index (0, 1, 2, 3, 4) as the Case ID
-      // This ensures we always have an ID to reference, even if the model metadata is empty.
-      const sanitizedResults = results.map((r, index) => ({
-        caseId: index, 
-        label: r.label,
-        score: r.score ?? 0,
-        raw: r // Keep this for your F12 console inspection
-      }));
+      // 5. Output for UI and Debug
+      console.log("WORKER DEBUG - Results:", JSON.stringify(results, null, 2));
 
-      self.postMessage({ status: "success", results: sanitizedResults });
+      self.postMessage({ 
+        status: "success", 
+        results: results 
+      });
+
     } catch (error) {
       console.error("Worker Error:", error);
-      self.postMessage({ status: "error", error: error.message });
+      self.postMessage({ 
+        status: "error", 
+        error: error.message 
+      });
     }
   }
 });
