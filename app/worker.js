@@ -12,8 +12,7 @@ self.addEventListener("message", async (event) => {
   if (action === "analyze") {
     try {
       if (!classifier) {
-        // FIXED: Changed to quantized: true to match your exact folder structure
-        // This tells it to look in /models/plant_analyzer_model/onnx/model_quantized.onnx
+        // Quantized set to true to target: /onnx/model_quantized.onnx
         classifier = await pipeline("image-classification", "plant_analyzer_model", { quantized: true });
       }
 
@@ -22,6 +21,8 @@ self.addEventListener("message", async (event) => {
       
       const results = await classifier(rawImage, { topk: 5 });
 
+      // STRICT PASS-THROUGH: No forcing, no ranking logic. 
+      // This guarantees the UI receives the raw Case ID for debugging.
       const sanitizedResults = results.map((r) => ({
         caseId: r.label, 
         score: r.score ?? 0
