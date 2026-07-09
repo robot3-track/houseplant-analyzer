@@ -1,18 +1,8 @@
 import { env, pipeline, RawImage } from "@huggingface/transformers";
 
-// 1. Configuration
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = "/models/";
-
-// Mapping IDs to names. If the model returns ID 0, it will display this name.
-const LABEL_MAP = {
-  0: "Powdery Mildew",
-  1: "Healthy",
-  2: "Early Blight",
-  3: "Late Blight",
-  4: "Septoria Leaf Spot"
-};
 
 let classifier = null;
 
@@ -21,42 +11,24 @@ self.addEventListener("message", async (event) => {
 
   if (action === "analyze") {
     try {
-      // 2. Initialize pipeline
-      // We force 'task: "image-classification"' to bypass any tokenizer/NLP detection errors.
       if (!classifier) {
         classifier = await pipeline("image-classification", "plant_analyzer_model", { 
           quantized: true,
-          task: "image-classification" 
+          task: "image-classification"
         });
       }
 
-      // 3. Image Processing
-      // Convert raw buffer to Image, resize to model input (224x224), and normalize.
-      // Normalization is critical. If your model was trained on ImageNet, it needs 
-      // specific mean/std dev values.
-      let img = new RawImage(new Uint8Array(rgbaData.buffer || rgbaData), width, height, 4).rgb();
-      img = img.resize(224, 224);
+      // FIX: Ensure we have a proper Uint8Array from the buffer
+      // If rgbaData is passed as an object, we take the buffer property
+      const data = rgbaData.buffer ? new Uint8Array(rgbaData.buffer) : new Uint8Array(rgbaData);
 
-      // 4. Inference
-      // We set topk to 5 to check the distribution of all potential classes.
-      const results = await classifier(img, { topk: 5 });
+      // Create the RawImage safely
+      const img = new RawImage(data, width, height, 4).rgb();
+      const resized = img.resize(224, 224);
 
-      // 5. DEBUGGING: Inspect the real output
-      // This prints the exact objects to your browser console (F12).
-      console.log("WORKER DEBUG - Raw Model Output:", JSON.stringify(results, null, 2));
+      const results = await classifier(resized, { topk: 5 });
 
-      // 6. Sanitization & Mapping
-      // If the model doesn't provide a 'label', we use our LABEL_MAP based on the index.
-      const sanitizedResults = results.map((r, index) => ({
-        id: index,
-        // If the model didn't return a name, use our fallback map
-        label: r.label || LABEL_MAP[index] || `Unknown Class ${index}`,
-        score: r.score ?? 0,
-        raw: r
-      }));
-
-      self.postMessage({ status: "success", results: sanitizedResults });
-
+      self.postMessage({ status: "success", results: results });
     } catch (error) {
       console.error("Worker Error:", error);
       self.postMessage({ status: "error", error: error.message });
