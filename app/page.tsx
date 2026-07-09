@@ -215,46 +215,43 @@ export default function PlantAnalyzer() {
           </div>
         </div>
 
-        {/* Right Column: Pure Debug Output */}
+        {/* Right Column: Diagnostic Assessment */}
         <section className="w-full h-full flex flex-col justify-start">
-          {predictions.length > 0 ? (
-            <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm transition-all h-full">
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Raw Model Identifiers</h2>
+          <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm h-full">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Diagnostic Assessment</h2>
+            
+            {predictions.length > 0 ? (
               <div className="space-y-4">
                 {predictions.map((p, idx) => (
-                  <div key={idx} className="flex flex-col p-4 border border-stone-200 rounded-xl bg-stone-50/50 shadow-sm">
-                    
+                  <div key={idx} className="p-4 border border-stone-200 rounded-xl bg-stone-50/50 shadow-sm">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-stone-500 block mb-1">
-                          Extracted ID / Label
-                        </span>
-                        <span className="text-lg font-mono font-bold text-stone-900 break-all">
-                          {p.label || p.caseId || p.id || "NULL_OR_MISSING"}
+                        {/* If label is missing, show a fallback, but the debug block below handles the mapping discovery */}
+                        <span className="text-lg font-bold text-stone-900">
+                          {p.label || "Unknown Diagnosis"}
                         </span>
                       </div>
-                      <span className="text-xs font-bold text-emerald-800 bg-emerald-100/60 border border-emerald-200 px-3 py-1.5 rounded-full whitespace-nowrap ml-4">
-                        {p.score !== undefined ? (p.score * 100).toFixed(2) : "0.00"}% Confidence
+                      <span className="text-xs font-bold text-emerald-800 bg-emerald-100/60 px-3 py-1.5 rounded-full">
+                        {(p.score * 100).toFixed(1)}% Match
                       </span>
                     </div>
 
-                    {/* Raw Object Dump - Proof of exactly what the worker is returning */}
-                    <div className="mt-1 bg-stone-900 rounded-lg p-3 overflow-x-auto">
-                      <span className="text-[10px] text-emerald-400 font-mono mb-1.5 block uppercase tracking-wider">Complete Worker Payload</span>
-                      <pre className="text-[11px] text-stone-300 font-mono leading-relaxed">
+                    {/* Diagnostic Debug Block - Reveals the hidden ID */}
+                    <div className="mt-2 bg-stone-900 rounded-lg p-3 overflow-x-auto">
+                      <span className="text-[10px] text-emerald-400 font-mono mb-1.5 block uppercase tracking-wider">Debug: Raw Model Data</span>
+                      <pre className="text-[11px] text-stone-300 font-mono leading-relaxed whitespace-pre-wrap">
                         {JSON.stringify(p, null, 2)}
                       </pre>
                     </div>
-
                   </div>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className="h-full min-h-[250px] border border-dashed border-stone-200 rounded-2xl flex items-center justify-center p-6 text-stone-400 text-sm italic font-serif bg-stone-50/40">
-              Awaiting input scan sample to dump raw model identifiers.
-            </div>
-          )}
+            ) : (
+              <div className="h-full min-h-[250px] border border-dashed border-stone-200 rounded-2xl flex items-center justify-center p-6 text-stone-400 text-sm italic font-serif">
+                {status || "Awaiting leaf sample for analysis."}
+              </div>
+            )}
+          </div>
         </section>
 
       </div>
@@ -262,7 +259,6 @@ export default function PlantAnalyzer() {
       <footer className="mt-10 border-t border-stone-200/40 pt-4 text-center">
         <p className="text-xs text-stone-400 tracking-wide">100% Edge Computing Architecture • No User Data Leaves This Device</p>
       </footer>
-
     </main>
   );
 }
