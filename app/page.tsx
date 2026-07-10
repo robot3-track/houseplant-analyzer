@@ -309,7 +309,7 @@ export default function PlantAnalyzer() {
             </div>
           ) : (
             <div className="h-full min-h-[250px] flex items-center justify-center p-6 text-stone-400 italic">
-              {status || "Awaiting sample..."}
+              {status || "Awaiting sample (note to user: if you already inputted an image and there are no results, please check your filters)..."}
             </div>
           )}
         </section>
