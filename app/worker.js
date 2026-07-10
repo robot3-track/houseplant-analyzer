@@ -1,4 +1,4 @@
-import { env, pipeline } from "@huggingface/transformers";
+import { env, pipeline, RawImage } from "@huggingface/transformers";
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
@@ -16,15 +16,17 @@ self.addEventListener("message", async (event) => {
         classifier = await pipeline("image-classification", "plant_analyzer_model");
       }
 
-      // Convert to proper format
+      // Convert the raw data to a Uint8Array
       const pixelData = new Uint8Array(rgbaData);
 
+      // FIX: Wrap the pixel data in a RawImage object
+      // We pass the width, height, and '4' for the RGBA channels
+      const image = new RawImage(pixelData, width, height, 4);
+
       // Inference
-      // Because your config.json has 'id2label', the result 
-      // will already contain the label string (e.g., "Corn___Healthy")
-      const results = await classifier(pixelData, { 
+      // Now pass the RawImage object, which the library understands
+      const results = await classifier(image, { 
         topk: 5,
-        // The library handles raw image conversion automatically if needed
       });
 
       self.postMessage({ status: "success", results: results });
