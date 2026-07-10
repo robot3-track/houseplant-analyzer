@@ -1,22 +1,36 @@
-# Flora Diagnostics
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-This is a plant health scanner that runs right in your web browser. It checks pictures of plants on your device without sending any data to the internet. This makes it fast and keeps your photos private.
+## Getting Started
 
-Live website: https://floradiagnostics.vercel.app/
+First, run the development server:
 
-## UN Sustainable Development Goal Alignment
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-This app covers: UN Sustainable Development Goal 2: Zero Hunger. By helping farmers and home gardeners quickly identify crop diseases, this easy offline app can prevent massive food loss, promote sustainable agriculture, and improve overall food security.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Features
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-* Works Offline: The app checks your plants on your phone or computer, so you do not need an internet connection.
-* Safe and Private: Your pictures and camera stream are never saved or sent to a server.
-* Finds 20 Plant Conditions: It checks for health and sickness in plants like Corn, Potato, Rice, Wheat, and Sugarcane.
-* Uses Camera or Uploads: You can take a live photo with your camera or upload a picture from your files.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Project Structure
+## Learn More
 
-* app/page.tsx: The main file for the web page, camera setup, and showing the results.
-* app/worker.js: The background file that runs the AI model to check the plants.
-* public/models/plant_analyzer_model/: The folder that holds the AI model files and plant names.
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
