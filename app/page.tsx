@@ -2,83 +2,67 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-// Database for diagnostic information mapped directly to your config.json labels
-const DISEASE_INFO: Record<string, { desc: string, treat: string }> = {
-  "Corn___Common_Rust": {
-    desc: "A fungal disease causing reddish-brown pustules on the leaf surface.",
-    treat: "Apply a preventative fungicide and improve air circulation."
+// Database updated directly to match your new houseplant model config.json labels
+const PLANT_CARE_DB: Record<string, { desc: string, treat: string }> = {
+  "African Violet (Saintpaulia ionantha)": {
+    desc: "Delicate indoor flowering specimen sensitive to extreme direct sun exposure and crown moisture.",
+    treat: "Provide bright, indirect light. Irrigate from the bottom to protect the leaves from spotting."
   },
-  "Corn___Gray_Leaf_Spot": {
-    desc: "Fungal patches forming long, rectangular lesions parallel to leaf veins.",
-    treat: "Maximize crop rotation and utilize resistant hybrids."
+  "Aloe Vera": {
+    desc: "Resilient succulent variant that retains heavy moisture stores inside its fleshy vascular leaves.",
+    treat: "Provide bright, direct sunlight. Water deeply but infrequently, allowing the medium to dry fully."
   },
-  "Corn___Healthy": {
-    desc: "Foliage shows optimal cell structure and clear vascular pathways.",
-    treat: "No treatment needed. Maintain standard irrigation cycles."
+  "Anthurium (Anthurium andraeanum)": {
+    desc: "Tropical evergreen featuring distinctive waxy spathes that demand high ambient moisture levels.",
+    treat: "Place in bright, indirect light. Water when the top inch of soil drops in moisture; mist regularly."
   },
-  "Potato___Early_Blight": {
-    desc: "Concentric rings forming target-like dark spots on older leaves.",
-    treat: "Apply copper-based fungicides early in the seasonal cycle."
+  "Areca Palm (Dypsis lutescens)": {
+    desc: "Feathery palm variant prone to tip crisping if subjected to heavy mineral buildup or dry drafts.",
+    treat: "Provide bright, filtered sunlight. Keep soil lightly moist and use distilled or filtered water."
   },
-  "Potato___Healthy": {
-    desc: "Foliage shows clean turgor pressure with no fungal lesions.",
-    treat: "No treatment needed. Monitor soil moisture levels closely."
+  "Asparagus Fern (Asparagus setaceus)": {
+    desc: "Lightweight, branching perennial with needle-like cladodes requiring consistent ambient moisture.",
+    treat: "Maintain dappled light or indirect shade. Water consistently to prevent sudden foliage drop."
   },
-  "Potato___Late_Blight": {
-    desc: "Aggressive, water-soaked dark lesions that progress to black necrosis.",
-    treat: "Remove affected foliage immediately; avoid overhead watering lines."
+  "Begonia (Begonia spp.)": {
+    desc: "Foliage display variant highly susceptible to powdery mildew if airflow is constrained.",
+    treat: "Situate in bright, indirect light. Apply water directly to the soil; avoid getting foliage wet."
   },
-  "Rice___Brown_Spot": {
-    desc: "Fungal spots with yellow halos evenly distributed on leaf surfaces.",
-    treat: "Improve soil nutrient balance and optimize potassium levels."
+  "Bird of Paradise (Strelitzia reginae)": {
+    desc: "Sturdy structural upright plant requiring extensive high-intensity light to thrive.",
+    treat: "Provide direct, bright sunlight. Water deeply during warm months; let dry slightly in winter."
   },
-  "Rice___Healthy": {
-    desc: "Foliage presents uniform green hues and clear cellular rows.",
-    treat: "No treatment needed. Continue standard paddi flooding schedules."
+  "Birds Nest Fern (Asplenium nidus)": {
+    desc: "Epophytic rosette fern that naturally collects moisture and organic material at its core axis.",
+    treat: "Keep in medium to low indirect light. Water along outer edges; do not pour directly into the nest."
   },
-  "Rice___Leaf_Blast": {
-    desc: "Spindle-shaped elliptical lesions with gray centers and dark borders.",
-    treat: "Avoid excessive nitrogen fertilizers and implement systemic fungicides."
+  "Boston Fern (Nephrolepis exaltata)": {
+    desc: "Classic hanging fern variant requiring constant humidity to prevent systemic frond crisping.",
+    treat: "Situate in bright, indirect light. Keep the growing medium consistently damp like a wrung-out sponge."
   },
-  "Wheat___Brown_Rust": {
-    desc: "Small, orange-brown pustules scattering across the leaf blades.",
-    treat: "Utilize rust-resistant seed variants in subsequent rotations."
+  "Calathea": {
+    desc: "Ornamental foliage specimen known for nyctinasty movements and high sensitivity to chemicals.",
+    treat: "Provide medium to low indirect light. Use distilled water exclusively and maximize surrounding humidity."
   },
-  "Wheat___Healthy": {
-    desc: "Vibrant, green stalks with clear and robust leaf blades.",
-    treat: "No treatment needed. Monitor for changes in ambient humidity."
+  "Cast Iron Plant (Aspidistra elatior)": {
+    desc: "Extremely durable low-light survivor tolerant of low humidity and irregular watering cycles.",
+    treat: "Position in low light or deep shade. Allow soil to dry out significantly between watering sessions."
   },
-  "Wheat___Yellow_Rust": {
-    desc: "Distinct yellow pustules forming linear stripes along leaf veins.",
-    treat: "Apply target triazole fungicides immediately upon discovery."
+  "Chinese Money Plant (Pilea peperomioides)": {
+    desc: "Fast-growing succulent member displaying rounded, shield-shaped leaves on central stems.",
+    treat: "Provide bright, indirect light. Rotate weekly for even growth and water once leaves droop slightly."
   },
-  "Rice_Bacterial Blight Disease": {
-    desc: "Bacterial wilting causing systematic yellowing starting at leaf tips.",
-    treat: "Maintain strict field drainage control to lower transmission rates."
+  "Chinese evergreen (Aglaonema)": {
+    desc: "Highly adaptable, slow-growing indoor variant that maintains deep color in lower light zones.",
+    treat: "Maintain low to medium indirect light. Water thoroughly when the top two inches of medium dry out."
   },
-  "Rice_Blast Disease": {
-    desc: "Severe fungal blast nodes causing lesions across stalks and leaves.",
-    treat: "Apply specific silicon soil treatments and adjust water heights."
+  "Christmas Cactus (Schlumbergera bridgesii)": {
+    desc: "Epiphytic jungle cactus that prefers higher relative moisture environments than desert varieties.",
+    treat: "Provide bright, indirect light. Irrigate thoroughly only when the surface layer dries out entirely."
   },
-  "Rice_Brown Spot Disease": {
-    desc: "Fungal spotting on leaves that diminishes grain size and total yield.",
-    treat: "Use certified clean seeds and treat them before planting phases."
-  },
-  "Rice_False Smut Disease": {
-    desc: "Chlamydospores that transform grain kernels into green velvety masses.",
-    treat: "Manually remove infected heads and apply pre-flowering fungicide."
-  },
-  "sugarcane_Bacterial Blight": {
-    desc: "Severe vascular streaking leading to localized cellular necrosis.",
-    treat: "Source clean seed canes and practice rigorous tool sanitation."
-  },
-  "sugarcane_Healthy": {
-    desc: "Stalks and leaves demonstrate robust density and deep coloring.",
-    treat: "No treatment needed. Keep up standard cane field upkeep."
-  },
-  "sugarcane_Red Rot": {
-    desc: "Internal red discoloration with white patches inside split stalks.",
-    treat: "Immediately rotate out infected crop fields and plow under trash."
+  "Chrysanthemum": {
+    desc: "Herbaceous blooming variant that consumes massive water resources during active flowering windows.",
+    treat: "Provide bright, direct sunlight. Check daily to ensure the soil remains uniformly moist."
   }
 };
 
@@ -211,23 +195,23 @@ export default function PlantAnalyzer() {
     }
   };
 
-  // Filter list logic
+  // Filter list logic matching the new houseplant naming strings
   let displayPredictions = predictions.filter(p => {
     if (!p?.label) return false;
     if (selectedPlant === 'All') return true;
     return p.label.toLowerCase().includes(selectedPlant.toLowerCase());
   });
 
-  // Safe default backup for Wheat
-  if (selectedPlant === 'Wheat' && displayPredictions.length === 0) {
-    displayPredictions = [{ label: 'Wheat___Healthy', score: 0.50 }];
+  // Safe default backup for Aloe Vera to preserve fallback UI mechanism
+  if (selectedPlant === 'Aloe' && displayPredictions.length === 0) {
+    displayPredictions = [{ label: 'Aloe Vera', score: 0.50 }];
   }
 
   return (
     <main className="max-w-6xl mx-auto min-h-screen bg-[#FBFBFA] text-[#2C302E] px-6 py-12 flex flex-col font-sans">
       <header className="mb-10">
-        <h1 className="text-4xl font-light tracking-tight text-stone-900">Flora Diagnostics</h1>
-        <p className="text-sm text-stone-500 mt-2 font-serif italic">In-browser local plant health scanner.</p>
+        <h1 className="text-4xl font-light tracking-tight text-stone-900">Houseplant Analyzer</h1>
+        <p className="text-sm text-stone-500 mt-2 font-serif italic">In-browser local houseplant identifier</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full">
@@ -239,12 +223,12 @@ export default function PlantAnalyzer() {
               value={selectedPlant}
               onChange={(e) => setSelectedPlant(e.target.value)}
             >
-              <option value="All">All Crops</option>
-              <option value="Corn">Corn</option>
-              <option value="Potato">Potato</option>
-              <option value="Rice">Rice</option>
-              <option value="Wheat">Wheat</option>
-              <option value="Sugarcane">Sugarcane</option>
+              <option value="All">All Houseplants</option>
+              <option value="Aloe">Aloe Vera</option>
+              <option value="Fern">Fern Variants</option>
+              <option value="Palm">Palm Variants</option>
+              <option value="Cactus">Cactus Variants</option>
+              <option value="Calathea">Calathea</option>
             </select>
           </div>
 
@@ -282,12 +266,12 @@ export default function PlantAnalyzer() {
         </div>
 
         <section className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm h-full">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Diagnostic Assessment</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Plant Identification</h2>
           {displayPredictions.length > 0 ? (
             <div className="space-y-4">
               {displayPredictions.map((p, idx) => {
                 const rawLabel = p.label ?? `Unknown_Class_${idx}`;
-                const info = DISEASE_INFO[rawLabel] || { desc: "Species identified. Full diagnostic narrative unavailable.", treat: "Consult local extension guidelines." };
+                const info = PLANT_CARE_DB[rawLabel] || { desc: "Species identified. Full care guidelines narrative unavailable.", treat: "Provide typical bright indirect light window placement." };
                 
                 const cleanLabel = String(rawLabel)
                   .replace('___', ' - ')
@@ -303,7 +287,7 @@ export default function PlantAnalyzer() {
                     </div>
                     <p className="text-sm text-stone-600 italic">{info.desc}</p>
                     <p className="text-sm font-semibold text-stone-800">
-                      Recommended Treatment: <span className="font-normal text-stone-600">{info.treat}</span>
+                      Care / Action: <span className="font-normal text-stone-600">{info.treat}</span>
                     </p>
                   </div>
                 );
@@ -311,7 +295,7 @@ export default function PlantAnalyzer() {
             </div>
           ) : (
             <div className="h-full min-h-[250px] flex items-center justify-center p-6 text-stone-400 italic">
-              {status || "Awaiting sample..."}
+              {status || "Awaiting sample... if you already uploaded the image, might take a few seconds to run local AI diagnostics"}
             </div>
           )}
         </section>

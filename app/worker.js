@@ -11,7 +11,7 @@ self.addEventListener("message", async (event) => {
 
   if (action === "analyze") {
     try {
-      // Initialize
+      // Correctly initializes the local plant_analyzer_model folder setup
       if (!classifier) {
         classifier = await pipeline("image-classification", "plant_analyzer_model");
       }
@@ -27,7 +27,7 @@ self.addEventListener("message", async (event) => {
         topk: 5,
       });
 
-      // FIX: Ensure every result has a valid string label before sending it to the frontend
+      // Ensure every result has a valid string label before sending it to the frontend
       const safeResults = results.map((r, index) => ({
         ...r,
         label: r.label !== undefined ? r.label : `Unknown_Class_${index}`

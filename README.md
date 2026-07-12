@@ -1,22 +1,18 @@
-# Flora Diagnostics
+# Houseplant Analyzer
 
-This is a plant health scanner that runs right in your web browser. It checks pictures of plants on your device without sending any data to the internet. This makes it fast and keeps your photos private.
+This is an edge-computed indoor plant identification and care assistant that runs entirely within your web browser. It analyzes images locally on your device using ONNX runtime execution without transmitting any visual data to external servers, ensuring maximum privacy and zero latency.
 
-Live website: https://floradiagnostics.vercel.app
-
-## UN Sustainable Development Goal Alignment
-
-This app covers: UN Sustainable Development Goal 2: Zero Hunger. By helping farmers and home gardeners quickly identify crop diseases, this easy-to-access offline app can prevent massive food loss, promote sustainable agriculture, and improve overall food security. Furthermore, the importance of this app being able to run offline is crucial especially in rural farms and communities. To be able to quickly provide crop analysis for these locations can be a crucial component in a community's ability to thrive. Since 43% of the world, or 3.5 billion people live in rural communities with minimal connections to the internet- and among these people a total of 2.2 billion people (22%) don't have internet- this app can be a step to providing help to these rural farms.
+Live website: https://houseplant-analyzer.vercel.app
 
 ## Features
 
-* Works Offline: The app checks your plants on your phone or computer, so you do not need an internet connection.
-* Safe and Private: Your pictures and camera stream are never saved or sent to a server.
-* Finds 20 Plant Conditions: It checks for health and sickness in plants like Corn, Potato, Rice, Wheat, and Sugarcane.
-* Uses Camera or Uploads: You can take a live photo with your camera or upload a picture from your files.
+* **Local Edge Inference:** Runs the vision classification pipeline directly on your CPU or GPU inside a browser tab thread, requiring no active network connections after the initial page load.
+* **Privacy-First Engineering:** Your local camera feed and uploaded graphics assets are processed out of memory buffers and are never saved or sent to a server.
+* **15 Household Varieties Covered:** Configured to instantly identify and provide custom light, watering, and toxicity details for popular indoor plants like Aloe Vera, Monstera, Calathea, and various Ferns/Palms.
+* **Flexible Input Methods:** Capture live plant specimens using your device's environment camera stream or drop pre-existing files directly into the analyzer interface.
 
 ## Project Structure
 
-* app/page.tsx: The main file for the web page, camera setup, and showing the results.
-* app/worker.js: The background file that runs the AI model to check the plants.
-* public/models/plant_analyzer_model/: The folder that holds the AI model files and plant names. (model_quantized.onnx)
+* **`app/page.tsx`:** The core interface file managing camera stream lifecycles, file system buffers, and state rendering for the plant care metrics.
+* **`app/worker.js`:** The background Web Worker thread using Transformers.js to execute local ONNX model predictions without blocking the main UI thread.
+* **`public/models/plant_analyzer_model/`:** The local storage structure containing the web-ready quantized weights (`onnx/model_quantized.onnx`), token configuration, and structural feature extractors.

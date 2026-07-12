@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Local Plant Health Scanner",
-  description: "Open Source 100% local plant health scanner through local AI",
+  title: "Local Houseplant Identifier",
+  description: "Open Source 100% local plant identifier through local AI",
 };
 
 export default function RootLayout({
