@@ -114,7 +114,7 @@ export default function PlantAnalyzer() {
         setStatus('');
       }
     } catch (err) {
-      setStatus('Please grant camera access to evaluate leaves.');
+      setStatus('Please grant camera access to evaluate plant.');
     }
   };
 
