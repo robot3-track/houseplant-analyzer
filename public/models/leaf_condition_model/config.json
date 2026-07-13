@@ -1,0 +1,1 @@
+{"architectures":["MobileNetV2ForImageClassification"],"model_type":"vit","num_labels":1000,"id2label":{"0":"background","1":"plant leaf","2":"foliage"},"problem_type":"single_label_classification"}

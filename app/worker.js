@@ -1,42 +1,51 @@
 import { env, pipeline, RawImage } from "@huggingface/transformers";
 
-env.allowRemoteModels = false;
+// Strictly enforce local models to prevent silent Hub fallbacks
 env.allowLocalModels = true;
+env.allowRemoteModels = false;
 env.localModelPath = "/models/";
 
-let classifier = null;
+// Warm up the models immediately on worker bootup instead of waiting for the message
+const primaryClassifierPromise = pipeline("image-classification", "plant_analyzer_model");
+const secondaryClassifierPromise = pipeline("image-classification", "leaf_condition_model");
 
 self.addEventListener("message", async (event) => {
   const { action, rgbaData, width, height } = event.data;
 
   if (action === "analyze") {
     try {
-      // Correctly initializes the local plant_analyzer_model folder setup
-      if (!classifier) {
-        classifier = await pipeline("image-classification", "plant_analyzer_model");
+      // Resolve the pre-warmed pipeline instances instantly
+      const primaryClassifier = await primaryClassifierPromise;
+      const secondaryClassifier = await secondaryClassifierPromise;
+
+      if (!rgbaData || rgbaData.length === 0) {
+        throw new Error("Input raw pixel array buffer is empty or missing.");
       }
 
-      // Convert the raw data to a Uint8Array
-      const pixelData = new Uint8Array(rgbaData);
+      // CRITICAL FIX: Clone the data buffer for each pipeline. 
+      // If they share the same RawImage, the preprocessors will mutate the data 
+      // simultaneously and feed garbage to the secondary model.
+      const buffer1 = new Uint8Array(rgbaData).slice();
+      const buffer2 = new Uint8Array(rgbaData).slice();
 
-      // Wrap the pixel data in a RawImage object
-      const image = new RawImage(pixelData, width, height, 4);
+      const image1 = new RawImage(buffer1, width, height, 4);
+      const image2 = new RawImage(buffer2, width, height, 4);
 
-      // Inference
-      const results = await classifier(image, { 
-        topk: 5,
+      // Parallel execution is now isolated and safe
+      const [primaryResults, secondaryResults] = await Promise.all([
+        primaryClassifier(image1, { topk: 3 }),
+        secondaryClassifier(image2, { topk: 3 })
+      ]);
+
+      self.postMessage({
+        status: "success",
+        results: {
+          primary: primaryResults,
+          secondary: secondaryResults
+        }
       });
 
-      // Ensure every result has a valid string label before sending it to the frontend
-      const safeResults = results.map((r, index) => ({
-        ...r,
-        label: r.label !== undefined ? r.label : `Unknown_Class_${index}`
-      }));
-
-      // Post the safe results back to the main thread
-      self.postMessage({ status: "success", results: safeResults });
     } catch (error) {
-      console.error("Worker Error:", error);
       self.postMessage({ status: "error", error: error.message });
     }
   }

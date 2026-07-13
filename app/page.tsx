@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 
-// Database updated directly to match your new houseplant model config.json labels
+// Database directly matched to your primary houseplant model config.json labels
 const PLANT_CARE_DB: Record<string, { desc: string, treat: string }> = {
   "African Violet (Saintpaulia ionantha)": {
     desc: "Delicate indoor flowering specimen sensitive to extreme direct sun exposure and crown moisture.",
@@ -66,6 +66,38 @@ const PLANT_CARE_DB: Record<string, { desc: string, treat: string }> = {
   }
 };
 
+// Explicit clinical mapping for actual pathogen keywords if the model emits them
+const HEALTH_DIAGNOSTICS: Record<string, { status: string; pathology: string; vectors: string[]; action: string; severity: 'neutral' | 'critical' | 'warning' | 'success' }> = {
+  "black_rot": {
+    status: "Pathogen Confirmed: Black Rot (Xanthomonas)",
+    pathology: "Vascular tissue degradation identified. Necrotic dark lesions with chlorotic halos expanding along margin veins.",
+    vectors: ["Necrotic Tissue: High", "Pathogen Spread: Active", "Spore Count: Elevated"],
+    action: "Isolate the specimen immediately. Prune all infected leaf blades using sterilized shears and reduce ambient humidity.",
+    severity: 'critical'
+  },
+  "powdery_mildew": {
+    status: "Fungal Outbreak: Powdery Mildew",
+    pathology: "Superficial white/grey fungal mycelium dust coating the upper epidermis layer, blocking light synthesis.",
+    vectors: ["Mycelium Density: Visible", "Stomata Blockage: Active", "Spore Count: High"],
+    action: "Apply an organic neem oil solution or sulfur-based fungicide. Enhance cross-room air circulation profiles.",
+    severity: 'warning'
+  },
+  "leaf_scorch": {
+    status: "Vascular Distress: Leaf Scorch / Moisture Deficit",
+    pathology: "Desiccation of leaf blade margins with absolute cellular collapse. Typically triggered by rapid moisture evaporation.",
+    vectors: ["Desiccation Index: Severe", "Turgor Pressure: Low", "Sun Burn Damage: High"],
+    action: "Drench soil core immediately. Relocate plant out of direct heat draft lines and trim crispy edges.",
+    severity: 'warning'
+  },
+  "healthy": {
+    status: "No Pathogens Detected",
+    pathology: "Foliage cell wall structural integrity normal. Surface pigment profiling indicates nominal photosynthetic activity.",
+    vectors: ["Pathogens: Clean", "Turgor Index: Optimal", "Chlorophyll Level: Stable"],
+    action: "Maintain current irrigation velocity and environmental lighting configurations.",
+    severity: 'success'
+  }
+};
+
 export default function PlantAnalyzer() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -74,7 +106,8 @@ export default function PlantAnalyzer() {
   const [cameraPaused, setCameraPaused] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
-  const [predictions, setPredictions] = useState<any[]>([]);
+  const [primaryPredictions, setPrimaryPredictions] = useState<any[]>([]);
+  const [secondaryPredictions, setSecondaryPredictions] = useState<any[]>([]);
   const [selectedPlant, setSelectedPlant] = useState<string>('All');
 
   useEffect(() => {
@@ -84,16 +117,14 @@ export default function PlantAnalyzer() {
 
     workerRef.current.onmessage = (event: MessageEvent) => {
       const { status, results, error } = event.data;
-      
       if (error) {
         setStatus(`Diagnostic failure: ${error}`);
         return;
       }
-
       if (status === 'success') {
         setStatus('');
-        const validPredictions = (results || []).filter((r: any) => r.label !== 'Invalid');
-        setPredictions(validPredictions);
+        setPrimaryPredictions((results?.primary || []).filter((r: any) => r.label !== 'Invalid'));
+        setSecondaryPredictions(results?.secondary || []);
       }
     };
 
@@ -114,7 +145,7 @@ export default function PlantAnalyzer() {
         setStatus('');
       }
     } catch (err) {
-      setStatus('Please grant camera access to evaluate plant.');
+      setStatus('Please grant camera access to evaluate leaves.');
     }
   };
 
@@ -141,7 +172,6 @@ export default function PlantAnalyzer() {
 
   const captureAndAnalyze = () => {
     if (!videoRef.current || !workerRef.current) return;
-
     const rgbaData = getAnalysisBuffer(videoRef.current);
     if (rgbaData) {
       const canvas = document.createElement('canvas');
@@ -149,7 +179,6 @@ export default function PlantAnalyzer() {
       canvas.height = videoRef.current.videoHeight;
       canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
       setPreviewImage(canvas.toDataURL('image/jpeg'));
-      
       videoRef.current.pause();
       setCameraPaused(true);
 
@@ -159,8 +188,7 @@ export default function PlantAnalyzer() {
         width: 224,
         height: 224
       }, [rgbaData.buffer]);
-
-      setStatus('Analyzing captured frame...');
+      setStatus('Analyzing metrics via warmed local pipelines...');
     }
   };
 
@@ -169,7 +197,6 @@ export default function PlantAnalyzer() {
     if (file && workerRef.current) {
       setStatus('Loading upload file...');
       const reader = new FileReader();
-      
       reader.onload = (e) => {
         const fileDataUrl = e.target?.result as string;
         setPreviewImage(fileDataUrl);
@@ -186,7 +213,7 @@ export default function PlantAnalyzer() {
               width: 224,
               height: 224
             }, [rgbaData.buffer]);
-            setStatus('Analyzing file metrics...');
+            setStatus('Analyzing file metrics via warmed local pipelines...');
           }
         };
         img.src = fileDataUrl;
@@ -195,23 +222,45 @@ export default function PlantAnalyzer() {
     }
   };
 
-  // Filter list logic matching the new houseplant naming strings
-  let displayPredictions = predictions.filter(p => {
+  let displayPredictions = primaryPredictions.filter(p => {
     if (!p?.label) return false;
     if (selectedPlant === 'All') return true;
     return p.label.toLowerCase().includes(selectedPlant.toLowerCase());
   });
 
-  // Safe default backup for Aloe Vera to preserve fallback UI mechanism
   if (selectedPlant === 'Aloe' && displayPredictions.length === 0) {
     displayPredictions = [{ label: 'Aloe Vera', score: 0.50 }];
   }
 
+  // RECONFIGURED MEDICAL PIPELINE: Normalize input text casing safely and flag raw labels
+  const topSecondaryLabel = secondaryPredictions[0]?.label || null;
+  const lookupKey = topSecondaryLabel ? String(topSecondaryLabel).trim().toLowerCase().replace(/ /g, '_') : '';
+  let medicalReport = lookupKey ? HEALTH_DIAGNOSTICS[lookupKey] : null;
+
+  if (!medicalReport && secondaryPredictions.length > 0) {
+    const cleanLabelName = String(topSecondaryLabel).replace(/_/g, ' ');
+    medicalReport = {
+      status: `Inconclusive Pathology Read [RAW DATA: "${topSecondaryLabel}"]`,
+      pathology: `The classification pipeline detected structural elements of "${cleanLabelName}", but the model's current category dictionary does not include an active plant-pathogen mapping for this class label.`,
+      vectors: [`Raw Output: ${topSecondaryLabel}`, "Fungal Diagnostics: Unavailable", "Requires Disease-Tuned Weights"],
+      action: "Check the exact string inside the brackets above. It must match your configuration dictionary keys exactly.",
+      severity: 'neutral'
+    };
+  }
+
+  // Pick color style blocks contextually based on the true model data
+  const themeStyles = {
+    critical: { border: "border-red-200", bg: "bg-red-50/40", dot: "bg-red-600", tag: "text-red-800 bg-red-100" },
+    warning: { border: "border-amber-200", bg: "bg-amber-50/40", dot: "bg-amber-600", tag: "text-amber-800 bg-amber-100" },
+    success: { border: "border-emerald-200", bg: "bg-emerald-50/40", dot: "bg-emerald-600", tag: "text-emerald-800 bg-emerald-100" },
+    neutral: { border: "border-stone-200", bg: "bg-stone-50/50", dot: "bg-stone-400", tag: "text-stone-700 bg-stone-100" }
+  }[medicalReport?.severity || 'neutral'];
+
   return (
     <main className="max-w-6xl mx-auto min-h-screen bg-[#FBFBFA] text-[#2C302E] px-6 py-12 flex flex-col font-sans">
       <header className="mb-10">
-        <h1 className="text-4xl font-light tracking-tight text-stone-900">Houseplant Analyzer</h1>
-        <p className="text-sm text-stone-500 mt-2 font-serif italic">In-browser local houseplant identifier</p>
+        <h1 className="text-4xl font-light tracking-tight text-stone-900">Flora Diagnostics</h1>
+        <p className="text-sm text-stone-500 mt-2 font-serif italic">In-browser cached local dual-pipeline plant health scanner.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full">
@@ -265,39 +314,71 @@ export default function PlantAnalyzer() {
           </div>
         </div>
 
-        <section className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm h-full">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Plant Identification</h2>
-          {displayPredictions.length > 0 ? (
-            <div className="space-y-4">
-              {displayPredictions.map((p, idx) => {
-                const rawLabel = p.label ?? `Unknown_Class_${idx}`;
-                const info = PLANT_CARE_DB[rawLabel] || { desc: "Species identified. Full care guidelines narrative unavailable.", treat: "Provide typical bright indirect light window placement." };
-                
-                const cleanLabel = String(rawLabel)
-                  .replace('___', ' - ')
-                  .replace(/_/g, ' ');
-                
-                return (
-                  <div key={idx} className="p-4 border border-stone-200 rounded-xl bg-stone-50 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-stone-900 capitalize">{cleanLabel}</span>
-                      <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
-                        {typeof p.score === 'number' ? `${(p.score * 100).toFixed(1)}%` : 'N/A'}
-                      </span>
+        <section className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm h-full flex flex-col gap-6">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-4">Diagnostic Assessment</h2>
+            {displayPredictions.length > 0 ? (
+              <div className="space-y-4">
+                {displayPredictions.map((p, idx) => {
+                  const rawLabel = p.label ?? `Unknown_Class_${idx}`;
+                  const info = PLANT_CARE_DB[rawLabel] || { desc: "Species identified. Care guidelines narrative unavailable.", treat: "Provide typical bright indirect light window placement." };
+                  const cleanLabel = String(rawLabel).replace('___', ' - ').replace(/_/g, ' ');
+                  
+                  return (
+                    <div key={idx} className="p-4 border border-stone-200 rounded-xl bg-stone-50 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold text-stone-900 capitalize">{cleanLabel}</span>
+                        <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                          {typeof p.score === 'number' ? `${(p.score * 100).toFixed(1)}%` : 'N/A'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-stone-600 italic">{info.desc}</p>
+                      <p className="text-sm font-semibold text-stone-800">
+                        Care / Action: <span className="font-normal text-stone-600">{info.treat}</span>
+                      </p>
                     </div>
-                    <p className="text-sm text-stone-600 italic">{info.desc}</p>
-                    <p className="text-sm font-semibold text-stone-800">
-                      Care / Action: <span className="font-normal text-stone-600">{info.treat}</span>
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="h-full min-h-[250px] flex items-center justify-center p-6 text-stone-400 italic">
-              {status || "Awaiting sample... if you already uploaded the image, might take a few seconds to run local AI diagnostics"}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="min-h-[150px] flex items-center justify-center text-stone-400 italic">
+                {status || "Awaiting sample..."}
+              </div>
+            )}
+          </div>
+
+          {/* Dynamic, Honest Medical Indications Block */}
+          <div className="border-t border-stone-200 pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-stone-400 mb-3">Medical & Pathological Indications</h3>
+            {medicalReport ? (
+              <div className={`p-5 rounded-xl border ${themeStyles.border} ${themeStyles.bg} space-y-3`}>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${themeStyles.dot}`}></span>
+                  <span className="text-base font-bold text-stone-900">{medicalReport.status}</span>
+                </div>
+                
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  <span className="font-semibold text-stone-800">Observation:</span> {medicalReport.pathology}
+                </p>
+                
+                <div className="flex flex-wrap gap-2 py-1">
+                  {medicalReport.vectors.map((vector, i) => (
+                    <span key={i} className={`text-[11px] font-mono font-medium ${themeStyles.tag} px-2.5 py-0.5 rounded-md`}>
+                      {vector}
+                    </span>
+                  ))}
+                </div>
+
+                <p className="text-xs font-semibold text-stone-800 border-t border-stone-200/60 pt-2 mt-1">
+                  Action Plan: <span className="font-normal text-stone-600">{medicalReport.action}</span>
+                </p>
+              </div>
+            ) : (
+              <div className="text-xs text-stone-400 italic p-4 border border-dashed border-stone-200 rounded-xl text-center">
+                Run an evaluation cycle to populate active pathological health vectors.
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </main>
