@@ -259,8 +259,8 @@ export default function PlantAnalyzer() {
   return (
     <main className="max-w-6xl mx-auto min-h-screen bg-[#FBFBFA] text-[#2C302E] px-6 py-12 flex flex-col font-sans">
       <header className="mb-10">
-        <h1 className="text-4xl font-light tracking-tight text-stone-900">Flora Diagnostics</h1>
-        <p className="text-sm text-stone-500 mt-2 font-serif italic">In-browser cached local dual-pipeline plant health scanner.</p>
+        <h1 className="text-4xl font-light tracking-tight text-stone-900">Local Houseplant Analyzer</h1>
+        <p className="text-sm text-stone-500 mt-2 font-serif italic">In-browser cached local dual-pipeline plant analyzer/health scanner.</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start w-full">
