@@ -1,0 +1,54 @@
+name: Build Android APK Artifact
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Web Dependencies
+        run: |
+          npm install --legacy-peer-deps
+          npm install @capacitor/cli @capacitor/core @capacitor/android
+
+      - name: Setup Java JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Export Next.js Web Assets
+        run: npm run build
+
+      - name: Sync Web Assets to Capacitor Android Project
+        run: |
+          mkdir -p out
+          touch out/index.html
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Compile Debug APK Artifact
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: houseplant-analyzer-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
