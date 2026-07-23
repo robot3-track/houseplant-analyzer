@@ -1,5 +1,5 @@
 # Houseplant Analyzer
-
+[![Build Android APK Artifact](https://github.com/robot3-track/houseplant-analyzer/actions/workflows/android-build.yml/badge.svg)](https://github.com/robot3-track/houseplant-analyzer/actions/workflows/android-build.yml)
 This is an edge-computed indoor plant identification and care assistant that runs entirely within your web browser. It analyzes images locally on your device using ONNX runtime execution without transmitting any visual data to external servers, ensuring maximum privacy and zero latency.
 
 Live website: https://houseplant-analyzer.vercel.app
